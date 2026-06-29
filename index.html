@@ -4,9 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Master Recall | NEET UG Edition</title>
-    <link rel="manifest" href="manifest.json">
     
-    <!-- iOS Strict PWA Meta Tags -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Recall UG">
@@ -14,7 +12,6 @@
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        /* --- Themes --- */
         :root { 
             --bg: #FDF9F1; 
             --surface: #FFFFFF; 
@@ -224,10 +221,6 @@
     </div>
 
     <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => { navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW Setup Skipped')); });
-        }
-
         const subjects = [
             "BOTANY", "ZOOLOGY", "PHYSICS", "ORGANIC CHEMISTRY", "INORGANIC CHEMISTRY", "PHYSICAL CHEMISTRY"
         ];
@@ -322,7 +315,7 @@
             if(btnElement) btnElement.classList.add('active-nav');
             if(viewId === 'dashboard') renderDashboard();
             if(viewId === 'subjectView') renderSubjectView();
-            if(viewId === 'calendarView', this) renderCalendar();
+            if(viewId === 'calendarView') renderCalendar();
             if(viewId === 'analyticsView') renderAnalytics();
             if (window.innerWidth < 768) toggleSidebar();
         }
@@ -347,6 +340,7 @@
             }
         }
 
+        // --- MATH FIX: ABSOLUTE DATES FROM DAY 0 ---
         function addTask() {
             const sub = subSelect.value;
             const top = document.getElementById('topicInput').value;
@@ -356,10 +350,13 @@
             if (!sub || !top || intervals.length === 0) return alert("Please fill all fields.");
 
             let schedule = [];
-            let refDate = new Date();
+            let creationDate = new Date(); // This is Day 0
+            
+            // Calculate absolute target dates exactly matching the interval numbers
             for(let i=0; i < intervals.length; i++) {
-                refDate.setDate(refDate.getDate() + intervals[i]);
-                schedule.push(formatDate(refDate));
+                let targetDate = new Date(creationDate);
+                targetDate.setDate(creationDate.getDate() + intervals[i]);
+                schedule.push(formatDate(targetDate));
             }
 
             tasks.push({ id: Date.now(), subject: sub, topic: top, status: 0, intervals: intervals, schedule: schedule, completed: false });
@@ -373,18 +370,18 @@
             const task = tasks.find(t => t.id === id);
             if(!task) return;
 
-            task.status++;
-            if (task.status < task.intervals.length) {
-                let refDate = new Date(); 
-                for(let i = task.status; i < task.schedule.length; i++) {
-                    refDate.setDate(refDate.getDate() + task.intervals[i]);
-                    task.schedule[i] = formatDate(refDate);
+            task.status++; 
+
+            // If moving past R4, lock into the 30-day infinite loop
+            if (task.status >= task.intervals.length) {
+                let nextLoopDate = new Date(); // Adds 30 days from the moment they mark it done
+                nextLoopDate.setDate(nextLoopDate.getDate() + 30);
+                
+                if(task.schedule.length <= task.status) {
+                    task.schedule.push(formatDate(nextLoopDate));
+                } else {
+                    task.schedule[task.status] = formatDate(nextLoopDate);
                 }
-            } else {
-                let refDate = new Date();
-                refDate.setDate(refDate.getDate() + 30); // 30-DAY INFINITE LOOP FIXED
-                if(task.schedule.length <= task.status) task.schedule.push(formatDate(refDate));
-                else task.schedule[task.status] = formatDate(refDate);
             }
             saveAndRefresh();
         }
@@ -396,20 +393,28 @@
             tasks.forEach(task => {
                 if (task.schedule && Array.isArray(task.schedule) && task.schedule[task.status] < todayFormatted) {
                     shifted++;
-                    let refDate = new Date();
-                    task.schedule[task.status] = todayFormatted;
                     
-                    for(let i = task.status + 1; i < task.intervals.length; i++) {
-                        refDate.setDate(refDate.getDate() + task.intervals[i]);
-                        task.schedule[i] = formatDate(refDate);
+                    // Find out exactly how many days late you are
+                    let scheduledDate = new Date(task.schedule[task.status]);
+                    let actualToday = new Date(todayFormatted);
+                    let diffTime = actualToday.getTime() - scheduledDate.getTime();
+                    let diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+                    
+                    // Push the current due date AND all remaining future dates back by that exact difference
+                    for(let i = task.status; i < task.schedule.length; i++) {
+                        let shiftDate = new Date(task.schedule[i]);
+                        shiftDate.setDate(shiftDate.getDate() + diffDays);
+                        task.schedule[i] = formatDate(shiftDate);
                     }
                 }
             });
 
             if(shifted > 0) {
                 saveAndRefresh();
-                alert(`Forwarded ${shifted} overdue topics to today.`);
-            } else alert("You are perfectly on schedule!");
+                alert(`Forwarded ${shifted} overdue topics to today. Your future revision gaps have been preserved!`);
+            } else {
+                alert("You are perfectly on schedule!");
+            }
         }
 
         let pressTimer;
@@ -527,6 +532,7 @@
             if(document.getElementById('analyticsView').classList.contains('active')) renderAnalytics();
         }
 
+        // Color Logic
         function getStatusColor(statusIndex) {
             if (statusIndex === 0) return 'var(--status-red)';       
             if (statusIndex === 1 || statusIndex === 2) return 'var(--status-orange)';    
