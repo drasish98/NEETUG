@@ -6,6 +6,7 @@
     <title>Master Recall | NEET UG Edition</title>
     <link rel="manifest" href="manifest.json">
     
+    <!-- iOS Strict PWA Meta Tags -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Recall UG">
@@ -202,6 +203,7 @@
         </main>
     </div>
 
+    <!-- Settings Modal -->
     <div id="settingsModal" class="modal hidden">
         <div class="modal-content">
             <h3 style="margin-top: 0;">System Settings</h3>
@@ -320,7 +322,7 @@
             if(btnElement) btnElement.classList.add('active-nav');
             if(viewId === 'dashboard') renderDashboard();
             if(viewId === 'subjectView') renderSubjectView();
-            if(viewId === 'calendarView') renderCalendar();
+            if(viewId === 'calendarView', this) renderCalendar();
             if(viewId === 'analyticsView') renderAnalytics();
             if (window.innerWidth < 768) toggleSidebar();
         }
@@ -380,7 +382,7 @@
                 }
             } else {
                 let refDate = new Date();
-                refDate.setDate(refDate.getDate() + 27); // 27-DAY INFINITE LOOP UG
+                refDate.setDate(refDate.getDate() + 30); // 30-DAY INFINITE LOOP FIXED
                 if(task.schedule.length <= task.status) task.schedule.push(formatDate(refDate));
                 else task.schedule[task.status] = formatDate(refDate);
             }
@@ -525,7 +527,6 @@
             if(document.getElementById('analyticsView').classList.contains('active')) renderAnalytics();
         }
 
-        // Color Logic
         function getStatusColor(statusIndex) {
             if (statusIndex === 0) return 'var(--status-red)';       
             if (statusIndex === 1 || statusIndex === 2) return 'var(--status-orange)';    
